@@ -1,8 +1,8 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { DraftResponseSchema, RawExtractionAskSchema, type ContractClause, type DraftResponse } from "./schemas";
+import { DraftResponseSchema, RawExtractionAskSchema, type ContractClause } from "./schemas";
 import type { AnalysisProvider } from "./providers";
-import { verifyCitations } from "./verification";
+import { draftVerifiedResponse, verifyCitations } from "./verification";
 
 declare global {
   var __scopeShieldProvider: AnalysisProvider | undefined;
@@ -42,10 +42,8 @@ const draftStep = createStep({
   inputSchema: extractionOutputSchema,
   outputSchema: workflowOutputSchema,
   execute: async ({ inputData }) => {
-    const provider = globalThis.__scopeShieldProvider;
-    if (!provider) throw new Error("Analysis provider was not configured for the Mastra workflow.");
     const verified = verifyCitations(inputData.asks, inputData.clauses as ContractClause[]);
-    return { verifiedAsks: verified, draft: await provider.draft(verified, inputData.tone) };
+    return { verifiedAsks: verified, draft: draftVerifiedResponse(verified, inputData.tone) };
   }
 });
 

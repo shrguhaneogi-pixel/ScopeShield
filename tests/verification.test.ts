@@ -31,7 +31,7 @@ describe("deterministic citation verification", () => {
       citedClauseId: "clause-002",
       verbatimQuote: "The contract excludes all mobile work."
     })];
-    expect(verifyCitations(asks, software)[0]).toMatchObject({ citationVerified: false, verdict: "AMBIGUOUS" });
+    expect(verifyCitations(asks, software.clauses)[0]).toMatchObject({ citationVerified: false, verdict: "AMBIGUOUS" });
   });
 });
 

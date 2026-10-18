@@ -11,6 +11,7 @@ const examples = [
 
 export default function Home() {
   const [contractId, setContractId] = useState(sampleContracts[0].id);
+  const [contractText, setContractText] = useState(sampleContracts[0].clauses.map((clause) => `${clause.title}\n${clause.body}`).join("\n\n"));
   const [message, setMessage] = useState(examples[0]);
   const [tone, setTone] = useState<Tone>("neutral");
   const [result, setResult] = useState<AnalysisResult>();
@@ -21,7 +22,7 @@ export default function Home() {
   async function analyze() {
     setLoading(true); setError("");
     try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contractId, message, tone, revision }) });
+      const response = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contractId: contractId || undefined, contractText, clientMessage: message, tone, revision }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setResult(data); setRevision((current) => current + 1);
@@ -41,7 +42,7 @@ export default function Home() {
         <aside>
           <p className="mb-3 text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Signed contracts</p>
           <div className="space-y-2">
-            {sampleContracts.map((contract) => <button key={contract.id} onClick={() => setContractId(contract.id)} className={`w-full rounded-xl border p-4 text-left transition ${contractId === contract.id ? "border-[var(--green)] bg-[var(--mint)]" : "border-[var(--line)] bg-white hover:border-[var(--green)]"}`}><p className="font-semibold">{contract.name}</p><p className="mt-1 text-xs text-[var(--muted)]">{contract.clauses.length} canonical clauses</p></button>)}
+            {sampleContracts.map((contract) => <button key={contract.id} onClick={() => { setContractId(contract.id); setContractText(contract.clauses.map((clause) => `${clause.title}\n${clause.body}`).join("\n\n")); }} className={`w-full rounded-xl border p-4 text-left transition ${contractId === contract.id ? "border-[var(--green)] bg-[var(--mint)]" : "border-[var(--line)] bg-white hover:border-[var(--green)]"}`}><p className="font-semibold">{contract.name}</p><p className="mt-1 text-xs text-[var(--muted)]">{contract.clauses.length} canonical clauses</p></button>)}
           </div>
           <p className="mb-3 mt-8 text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Clause navigator</p>
           <div className="space-y-2">{sampleContracts.find((item) => item.id === contractId)?.clauses.map((clause) => <div key={clause.id} className="rounded-lg border border-[var(--line)] bg-white p-3 text-sm"><span className="mr-2 font-mono text-xs text-[var(--green)]">{clause.id}</span>{clause.title.replace(/^\d+\.\s*/, "")}</div>)}</div>
@@ -49,6 +50,8 @@ export default function Home() {
         <section>
           <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--green)]">Request analysis</p><h1 className="serif mt-2 text-4xl font-bold">Is this in scope?</h1><p className="mt-2 max-w-2xl text-[var(--muted)]">AI interprets the request. Deterministic verification checks every citation against your signed contract.</p></div>
           <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm">
+            <label className="text-sm font-semibold" htmlFor="contract">Canonical contract text</label>
+            <textarea id="contract" value={contractText} onChange={(event) => { setContractText(event.target.value); setContractId(""); }} className="mt-3 min-h-28 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 text-sm outline-none focus:border-[var(--green)]" />
             <label className="text-sm font-semibold" htmlFor="message">Paste the client request</label>
             <textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-3 min-h-36 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 outline-none focus:border-[var(--green)]" />
             <div className="mt-3 flex flex-wrap gap-2">{examples.map((example) => <button key={example} onClick={() => setMessage(example)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--green)]">Try example</button>)}</div>
