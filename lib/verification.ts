@@ -28,11 +28,12 @@ function verifyRawAsk(ask: RawExtractionAsk, clauses: ContractClause[]): Verifie
   const citationVerified = Boolean(clause && quoteVerified);
   const verificationNote = citationVerified
     ? `Verified exact quote against ${clause?.id}.`
-    : "Citation could not be verified as an exact normalized substring of the cited canonical clause.";
+    : "Citation failed verification: Quoted text was not found in original contract.";
   return {
     ...ask,
     citationVerified,
     verificationNote,
+    deterministicOverrideApplied: !citationVerified,
     verdict: citationVerified ? ask.verdict : "AMBIGUOUS"
   };
 }
@@ -43,7 +44,7 @@ export function verifyCitations(asks: RawExtractionAsk[], clauses: ContractClaus
 
 export function verifyAsk(ask: AtomicAsk, contract: Contract): Verification {
   const rawAsk: RawExtractionAsk = {
-    id: ask.id,
+    askId: ask.id,
     extractedText: ask.summary,
     verdict: "IN_SCOPE",
     rationale: ask.summary,
@@ -79,8 +80,8 @@ export function verifyAsk(ask: AtomicAsk, contract: Contract): Verification {
 
 export function draftResponse(verifications: Verification[], tone: Tone): string {
   if (verifications.some((item) => item.verdict === "AMBIGUOUS")) return "I need to confirm one detail against the signed agreement before I can give you a definitive answer. Could you clarify the deliverable or share the relevant context?";
-  if (verifications.every((item) => item.verdict === "OUT_OF_SCOPE")) return tone === "firm" ? "Thanks for the request. This falls outside our signed scope, so I can provide a separate estimate for the additional work." : "Thanks for the request. This appears to be outside the signed scope; I can prepare a separate estimate if helpful.";
-  return tone === "collaborative" ? "Thanks for the thoughtful request. This is covered by our current scope, and I’m happy to fold it into the next delivery." : "Thanks for the request. This is covered by the signed scope and will be included in the next delivery.";
+  if (verifications.every((item) => item.verdict === "OUT_OF_SCOPE")) return tone === "FIRM" ? "Thanks for the request. This falls outside our signed scope, so I can provide a separate estimate for the additional work." : "Thanks for the request. This appears to be outside the signed scope; I can prepare a separate estimate if helpful.";
+  return tone === "COLLABORATIVE" ? "Thanks for the thoughtful request. This is covered by our current scope, and I’m happy to fold it into the next delivery." : "Thanks for the request. This is covered by the signed scope and will be included in the next delivery.";
 }
 
 export function draftVerifiedResponse(asks: VerifiedAskResult[], tone: Tone): DraftResponse {
@@ -89,8 +90,8 @@ export function draftVerifiedResponse(asks: VerifiedAskResult[], tone: Tone): Dr
   const emailBody = ambiguous
     ? "I need to confirm one detail against the signed agreement before I can give you a definitive answer. Could you clarify the deliverable or share the relevant context?"
     : outOfScope
-      ? tone === "firm" ? "Thanks for the request. This falls outside our signed scope, so I can provide a separate estimate for the additional work." : "Thanks for the request. This appears to be outside the signed scope; I can prepare a separate estimate if helpful."
-      : tone === "collaborative" ? "Thanks for the thoughtful request. This is covered by our current scope, and I’m happy to fold it into the next delivery." : "Thanks for the request. This is covered by the signed scope and will be included in the next delivery.";
+      ? tone === "FIRM" ? "Thanks for the request. This falls outside our signed scope, so I can provide a separate estimate for the additional work." : "Thanks for the request. This appears to be outside the signed scope; I can prepare a separate estimate if helpful."
+      : tone === "COLLABORATIVE" ? "Thanks for the thoughtful request. This is covered by our current scope, and I’m happy to fold it into the next delivery." : "Thanks for the request. This is covered by the signed scope and will be included in the next delivery.";
   return {
     tone,
     emailBody,

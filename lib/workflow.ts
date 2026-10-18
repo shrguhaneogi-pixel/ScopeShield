@@ -1,6 +1,6 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { DraftResponseSchema, RawExtractionAskSchema, type ContractClause } from "./schemas";
+import { DraftResponseSchema, RawExtractionAskSchema, VerifiedAskResultSchema, type ContractClause } from "./schemas";
 import type { AnalysisProvider } from "./providers";
 import { draftVerifiedResponse, verifyCitations } from "./verification";
 
@@ -12,7 +12,7 @@ const inputSchema = z.object({
   message: z.string(),
   contractText: z.string(),
   clauses: z.array(z.object({ id: z.string(), title: z.string(), body: z.string(), category: z.string() })),
-  tone: z.enum(["firm", "neutral", "collaborative"])
+  tone: z.enum(["FIRM", "NEUTRAL", "COLLABORATIVE"])
 });
 const extractionOutputSchema = z.object({
   asks: z.array(RawExtractionAskSchema),
@@ -35,7 +35,7 @@ const extractionStep = createStep({
   }
 });
 
-const workflowOutputSchema = z.object({ verifiedAsks: z.array(z.any()), draft: DraftResponseSchema });
+const workflowOutputSchema = z.object({ verifiedAsks: z.array(VerifiedAskResultSchema), draft: DraftResponseSchema });
 const draftStep = createStep({
   id: "draft-verified-response",
   description: "Verify citations locally and draft only from verified results.",

@@ -23,7 +23,7 @@ export async function analyzeRequest(input: unknown) {
     tone: request.tone
   });
   const analyses = workflowResult.verifiedAsks.map((ask) => ({
-    askId: ask.id,
+    askId: ask.askId,
     clauseId: ask.citedClauseId,
     citationVerified: ask.citationVerified,
     quoteVerified: ask.citationVerified,

@@ -8,7 +8,7 @@ function categoryForHeading(heading: string): ContractClause["category"] {
   if (/exclusion|out of scope/.test(value)) return "EXCLUSIONS";
   if (/payment|fee|invoice/.test(value)) return "PAYMENT";
   if (/ip|intellectual|ownership|license/.test(value)) return "LEGAL_IP";
-  return "DELIVERABLES";
+  return "GENERAL";
 }
 
 export function segmentClauses(text: string): ContractClause[] {
@@ -34,4 +34,16 @@ export async function contractFromPdf(id: string, name: string, data: Uint8Array
   const extracted = await extractText(data, { mergePages: true });
   if (typeof extracted.text !== "string" || !extracted.text.trim()) throw new Error("The PDF did not contain extractable text.");
   return contractFromText(id, name, extracted.text);
+}
+
+export async function extractContractText(file: Buffer | string): Promise<string> {
+  if (typeof file === "string") {
+    if (!file.trim()) throw new Error("Contract text cannot be empty.");
+    return file;
+  }
+  const extracted = await extractText(file, { mergePages: true });
+  if (typeof extracted.text !== "string" || !extracted.text.trim()) {
+    throw new Error("The PDF did not contain extractable text.");
+  }
+  return extracted.text;
 }

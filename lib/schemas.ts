@@ -6,7 +6,8 @@ export const ClauseCategoryEnum = z.enum([
   "TIMELINE",
   "EXCLUSIONS",
   "PAYMENT",
-  "LEGAL_IP"
+  "LEGAL_IP",
+  "GENERAL"
 ]);
 export type ClauseCategory = z.infer<typeof ClauseCategoryEnum>;
 
@@ -33,14 +34,14 @@ export const ContractSchema = z.object({
 });
 export type Contract = z.infer<typeof ContractSchema>;
 
-export const ToneSchema = z.enum(["firm", "neutral", "collaborative"]);
+export const ToneSchema = z.enum(["FIRM", "NEUTRAL", "COLLABORATIVE"]);
 export type Tone = z.infer<typeof ToneSchema>;
 export const VerdictStateEnum = z.enum(["IN_SCOPE", "OUT_OF_SCOPE", "AMBIGUOUS"]);
 export const VerdictSchema = VerdictStateEnum;
 export type Verdict = z.infer<typeof VerdictSchema>;
 
 export const RawExtractionAskSchema = z.object({
-  id: z.string().min(1),
+  askId: z.string().min(1),
   extractedText: z.string().min(1),
   verdict: VerdictStateEnum,
   rationale: z.string().min(1),
@@ -51,7 +52,8 @@ export type RawExtractionAsk = z.infer<typeof RawExtractionAskSchema>;
 
 export const VerifiedAskResultSchema = RawExtractionAskSchema.extend({
   citationVerified: z.boolean(),
-  verificationNote: z.string().min(1)
+  verificationNote: z.string().min(1),
+  deterministicOverrideApplied: z.boolean()
 });
 export type VerifiedAskResult = z.infer<typeof VerifiedAskResultSchema>;
 
@@ -110,7 +112,7 @@ export const AnalyzeRequestSchema = z.object({
   contractText: z.string().min(1).optional(),
   message: z.string().min(1).max(10000).optional(),
   clientMessage: z.string().min(1).max(10000).optional(),
-  tone: ToneSchema.default("neutral"),
+  tone: ToneSchema.default("NEUTRAL"),
   revision: z.number().int().positive().default(1)
 }).refine((input) => Boolean(input.contractId || input.contractText) && Boolean(input.message || input.clientMessage), {
   message: "Provide contractId or contractText, and message or clientMessage."
