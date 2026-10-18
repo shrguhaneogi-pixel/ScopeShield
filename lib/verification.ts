@@ -27,7 +27,7 @@ function verifyRawAsk(ask: RawExtractionAsk, clauses: ContractClause[]): Verifie
   const quoteVerified = Boolean(clause && ask.verbatimQuote && normalize(clause.body).includes(normalize(ask.verbatimQuote)));
   const citationVerified = Boolean(clause && quoteVerified);
   const verificationNote = citationVerified
-    ? `Verified exact quote against ${clause.id}.`
+    ? `Verified exact quote against ${clause?.id}.`
     : "Citation could not be verified as an exact normalized substring of the cited canonical clause.";
   return {
     ...ask,

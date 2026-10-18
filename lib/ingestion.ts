@@ -13,10 +13,10 @@ function categoryForHeading(heading: string): ContractClause["category"] {
 
 export function segmentClauses(text: string): ContractClause[] {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const clauses: Clause[] = [];
+  const clauses: ContractClause[] = [];
   let current: { heading: string; body: string[] } | undefined;
   for (const line of lines) {
-    const heading = line.match(/^(\d+)[.)]\s+(.+)$/);
+    const heading = line.match(/^(?:(?:section|article)\s+)?(\d+(?:\.\d+)*)(?:[.)]\s*|\s+-\s*|\s+)(.+)$/i);
     if (heading) {
       if (current) clauses.push({ id: `clause-${String(clauses.length + 1).padStart(3, "0")}`, title: current.heading, body: current.body.join(" "), category: categoryForHeading(current.heading) });
       current = { heading: `${heading[1]}. ${heading[2]}`, body: [] };

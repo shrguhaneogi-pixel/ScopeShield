@@ -14,7 +14,11 @@ const inputSchema = z.object({
   clauses: z.array(z.object({ id: z.string(), title: z.string(), body: z.string(), category: z.string() })),
   tone: z.enum(["firm", "neutral", "collaborative"])
 });
-const extractionOutputSchema = z.array(RawExtractionAskSchema);
+const extractionOutputSchema = z.object({
+  asks: z.array(RawExtractionAskSchema),
+  clauses: inputSchema.shape.clauses,
+  tone: inputSchema.shape.tone
+});
 const extractionStep = createStep({
   id: "analyze-client-request",
   description: "Extract typed atomic asks and provisional evidence from the client message.",
@@ -23,20 +27,19 @@ const extractionStep = createStep({
   execute: async ({ inputData }) => {
     const provider = globalThis.__scopeShieldProvider;
     if (!provider) throw new Error("Analysis provider was not configured for the Mastra workflow.");
-    return provider.analyze(inputData.message, inputData.contractText);
+    return {
+      asks: await provider.analyze(inputData.message, inputData.contractText),
+      clauses: inputData.clauses,
+      tone: inputData.tone
+    };
   }
 });
 
-const draftInputSchema = z.object({
-  asks: extractionOutputSchema,
-  clauses: inputSchema.shape.clauses,
-  tone: inputSchema.shape.tone
-});
 const workflowOutputSchema = z.object({ verifiedAsks: z.array(z.any()), draft: DraftResponseSchema });
 const draftStep = createStep({
   id: "draft-verified-response",
   description: "Verify citations locally and draft only from verified results.",
-  inputSchema: draftInputSchema,
+  inputSchema: extractionOutputSchema,
   outputSchema: workflowOutputSchema,
   execute: async ({ inputData }) => {
     const provider = globalThis.__scopeShieldProvider;
@@ -52,11 +55,7 @@ export const analysisWorkflow = createWorkflow({
   outputSchema: workflowOutputSchema
 })
   .then(extractionStep)
-  .map(async ({ inputData, getStepResult }) => ({
-    asks: getStepResult(extractionStep),
-    clauses: inputData.clauses,
-    tone: inputData.tone
-  }))
+  .map(async ({ getStepResult }) => getStepResult(extractionStep))
   .then(draftStep)
   .commit();
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sampleContracts } from "../lib/contracts";
 import { segmentClauses } from "../lib/ingestion";
-import { verifyAsk } from "../lib/verification";
-import { AtomicAskSchema } from "../lib/schemas";
+import { verifyAsk, verifyCitations } from "../lib/verification";
+import { AtomicAskSchema, RawExtractionAskSchema } from "../lib/schemas";
 
 const software = sampleContracts[0];
 
@@ -21,12 +21,24 @@ describe("deterministic citation verification", () => {
     const ask = AtomicAskSchema.parse({ id: "ask-1", summary: "unknown", deliverable: "unknown", type: "other", clauseId: null, verbatimQuote: null });
     expect(verifyAsk(ask, software).verdict).toBe("AMBIGUOUS");
   });
+
+  it("verifies the new batch extraction shape without accepting paraphrases", () => {
+    const asks = [RawExtractionAskSchema.parse({
+      id: "ask-raw",
+      extractedText: "native mobile app",
+      verdict: "OUT_OF_SCOPE",
+      rationale: "Excluded deliverable.",
+      citedClauseId: "clause-002",
+      verbatimQuote: "The contract excludes all mobile work."
+    })];
+    expect(verifyCitations(asks, software)[0]).toMatchObject({ citationVerified: false, verdict: "AMBIGUOUS" });
+  });
 });
 
 describe("contract ingestion", () => {
   it("segments numbered clauses deterministically", () => {
-    const clauses = segmentClauses("1. Services\nBuild the thing.\n\n2) Exclusions\nNo support.");
+    const clauses = segmentClauses("Section 1. Services\nBuild the thing.\n\n2) Exclusions\nNo support.");
     expect(clauses).toHaveLength(2);
-    expect(clauses[1]).toMatchObject({ id: "clause-002", heading: "2. Exclusions", text: "No support." });
+    expect(clauses[1]).toMatchObject({ id: "clause-002", title: "2. Exclusions", body: "No support.", category: "EXCLUSIONS" });
   });
 });
