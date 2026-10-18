@@ -24,7 +24,7 @@ describe("deterministic citation verification", () => {
 
   it("verifies the new batch extraction shape without accepting paraphrases", () => {
     const asks = [RawExtractionAskSchema.parse({
-      id: "ask-raw",
+      askId: "ask-raw",
       extractedText: "native mobile app",
       verdict: "OUT_OF_SCOPE",
       rationale: "Excluded deliverable.",

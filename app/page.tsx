@@ -13,8 +13,9 @@ const examples = [
 export default function Home() {
   const [contractId, setContractId] = useState(sampleContracts[0].id);
   const [contractText, setContractText] = useState(sampleContracts[0].clauses.map((clause) => `${clause.title}\n${clause.body}`).join("\n\n"));
+  const [contractFile, setContractFile] = useState<File>();
   const [message, setMessage] = useState(examples[0]);
-  const [tone, setTone] = useState<Tone>("neutral");
+  const [tone, setTone] = useState<Tone>("NEUTRAL");
   const [result, setResult] = useState<AnalysisResult>();
   const [revision, setRevision] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,16 @@ export default function Home() {
   async function analyze() {
     setLoading(true); setError("");
     try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contractId: contractId || undefined, contractText, clientMessage: message, tone, revision }) });
+      const body = new FormData();
+      body.set("clientMessage", message);
+      body.set("tone", tone);
+      body.set("revision", String(revision));
+      if (contractFile) body.set("contractFile", contractFile);
+      else {
+        body.set("contractText", contractText);
+        if (contractId) body.set("contractId", contractId);
+      }
+      const response = await fetch("/api/analyze", { method: "POST", body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setResult(data); setRevision((current) => current + 1);
@@ -51,12 +61,14 @@ export default function Home() {
         <section>
           <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--green)]">Request analysis</p><h1 className="serif mt-2 text-4xl font-bold">Is this in scope?</h1><p className="mt-2 max-w-2xl text-[var(--muted)]">AI interprets the request. Deterministic verification checks every citation against your signed contract.</p></div>
           <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm">
-            <label className="text-sm font-semibold" htmlFor="contract">Canonical contract text</label>
+            <label className="text-sm font-semibold" htmlFor="contract-file">Upload contract PDF</label>
+            <input id="contract-file" type="file" accept="application/pdf,.pdf" onChange={(event) => setContractFile(event.target.files?.[0])} className="mt-3 block w-full text-sm text-[var(--muted)]" />
+            <label className="mt-4 block text-sm font-semibold" htmlFor="contract">Canonical contract text</label>
             <textarea id="contract" value={contractText} onChange={(event) => { setContractText(event.target.value); setContractId(""); }} className="mt-3 min-h-28 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 text-sm outline-none focus:border-[var(--green)]" />
             <label className="text-sm font-semibold" htmlFor="message">Paste the client request</label>
             <textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-3 min-h-36 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 outline-none focus:border-[var(--green)]" />
             <div className="mt-3 flex flex-wrap gap-2">{examples.map((example) => <button key={example} onClick={() => setMessage(example)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--green)]">Try example</button>)}</div>
-            <div className="mt-5 flex items-end justify-between gap-4"><label className="text-sm font-semibold">Response tone<select value={tone} onChange={(event) => setTone(event.target.value as Tone)} className="ml-3 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm font-normal"><option value="firm">Firm</option><option value="neutral">Neutral</option><option value="collaborative">Collaborative</option></select></label><button onClick={analyze} disabled={loading || !message.trim()} className="rounded-lg bg-[var(--green)] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{loading ? "Checking..." : "Analyze request"}</button></div>
+            <div className="mt-5 flex items-end justify-between gap-4"><label className="text-sm font-semibold">Response tone<select value={tone} onChange={(event) => setTone(event.target.value as Tone)} className="ml-3 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-sm font-normal"><option value="FIRM">Firm</option><option value="NEUTRAL">Neutral</option><option value="COLLABORATIVE">Collaborative</option></select></label><button onClick={analyze} disabled={loading || !message.trim()} className="rounded-lg bg-[var(--green)] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{loading ? "Checking..." : "Analyze request"}</button></div>
             {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-[var(--red)]">{error}</p>}
           </div>
           {result && <div className="mt-6 space-y-3">{result.analyses.map((analysis) => <article key={analysis.askId} className="rounded-xl border border-[var(--line)] bg-white p-5"><div className="flex items-center justify-between"><p className="font-semibold">Atomic ask: {analysis.askId}</p><span className={`rounded-full px-3 py-1 text-xs font-bold ${analysis.verdict === "IN_SCOPE" ? "bg-green-100 text-[var(--green)]" : analysis.verdict === "OUT_OF_SCOPE" ? "bg-orange-100 text-[var(--amber)]" : "bg-red-100 text-[var(--red)]"}`}>{analysis.verdict.replace("_", " ")}</span></div><p className="mt-3 text-sm text-[var(--muted)]">Citation {analysis.citationVerified ? "verified" : "not verified"} · {analysis.clauseId ?? "No clause cited"}</p>{analysis.warnings.map((warning) => <p key={warning} className="mt-2 text-sm text-[var(--red)]">{warning}</p>)}</article>)}</div>}
