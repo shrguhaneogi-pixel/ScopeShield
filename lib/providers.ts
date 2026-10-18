@@ -16,7 +16,8 @@ function mockAnalysis(message: string): ModelAnalysis {
 }
 
 export class MockProvider implements AnalysisProvider {
-  async analyze(message: string, _contractText: string): Promise<ModelAnalysis> {
+  async analyze(message: string, contractText: string): Promise<ModelAnalysis> {
+    void contractText;
     return mockAnalysis(message);
   }
 }
