@@ -1,4 +1,5 @@
 import { ClauseSchema, ContractSchema, type Clause, type Contract } from "./schemas";
+import { extractText } from "unpdf";
 
 export function segmentClauses(text: string): Clause[] {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -17,4 +18,10 @@ export function segmentClauses(text: string): Clause[] {
 
 export function contractFromText(id: string, name: string, text: string): Contract {
   return ContractSchema.parse({ id, name, clauses: segmentClauses(text) });
+}
+
+export async function contractFromPdf(id: string, name: string, data: Uint8Array): Promise<Contract> {
+  const extracted = await extractText(data, { mergePages: true });
+  if (typeof extracted.text !== "string" || !extracted.text.trim()) throw new Error("The PDF did not contain extractable text.");
+  return contractFromText(id, name, extracted.text);
 }
