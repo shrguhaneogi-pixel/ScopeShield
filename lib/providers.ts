@@ -1,24 +1,28 @@
 import OpenAI from "openai";
-import { ModelAnalysisSchema, type ModelAnalysis } from "./schemas";
+import { DraftResponseSchema, ModelAnalysisSchema, RawExtractionAskSchema, type DraftResponse, type RawExtractionAsk } from "./schemas";
 
 export interface AnalysisProvider {
-  analyze(message: string, contractText: string): Promise<ModelAnalysis>;
+  analyze(message: string, contractText: string): Promise<RawExtractionAsk[]>;
+  draft(verifiedAsks: unknown[], tone: "firm" | "neutral" | "collaborative"): Promise<DraftResponse>;
 }
 
-function mockAnalysis(message: string): ModelAnalysis {
+function mockAnalysis(message: string): RawExtractionAsk[] {
   const lower = message.toLowerCase();
   const asks = [];
-  if (lower.includes("mobile")) asks.push({ id: "ask-1", summary: "Build a native mobile application", deliverable: "mobile application", type: "new_work" as const, clauseId: "clause-002", verbatimQuote: "Services do not include native mobile applications, data migration, copywriting, or third-party subscription fees." });
-  if (lower.includes("revision") || lower.includes("feedback")) asks.push({ id: `ask-${asks.length + 1}`, summary: "Request another revision round", deliverable: "current deliverable", type: "revision" as const, clauseId: "clause-003", verbatimQuote: "Each deliverable includes up to two rounds of revisions. Additional revisions are billed at $150 per hour." });
-  if (lower.includes("logo") || lower.includes("brand")) asks.push({ id: `ask-${asks.length + 1}`, summary: "Create or change a brand deliverable", deliverable: "brand assets", type: "new_work" as const, clauseId: "clause-001", verbatimQuote: "The Designer will provide one primary logo, a secondary mark, and a one-page brand guide." });
-  if (!asks.length) asks.push({ id: "ask-1", summary: message.slice(0, 100), deliverable: "requested work", type: "other" as const, clauseId: null, verbatimQuote: null });
-  return ModelAnalysisSchema.parse({ asks });
+  if (lower.includes("mobile")) asks.push({ id: "ask-1", extractedText: "Build a native mobile application", verdict: "OUT_OF_SCOPE", rationale: "The request names an excluded deliverable.", citedClauseId: "clause-002", verbatimQuote: "Services do not include native mobile applications, data migration, copywriting, or third-party subscription fees." });
+  if (lower.includes("revision") || lower.includes("feedback")) asks.push({ id: `ask-${asks.length + 1}`, extractedText: "Request another revision round", verdict: "IN_SCOPE", rationale: "The request concerns the revision allowance.", citedClauseId: "clause-003", verbatimQuote: "Each deliverable includes up to two rounds of revisions. Additional revisions are billed at $150 per hour." });
+  if (lower.includes("logo") || lower.includes("brand")) asks.push({ id: `ask-${asks.length + 1}`, extractedText: "Create or change a brand deliverable", verdict: "IN_SCOPE", rationale: "The request concerns a listed brand deliverable.", citedClauseId: "clause-001", verbatimQuote: "The Designer will provide one primary logo, a secondary mark, and a one-page brand guide." });
+  if (!asks.length) asks.push({ id: "ask-1", extractedText: message.slice(0, 100), verdict: "AMBIGUOUS", rationale: "No deterministic contract evidence was identified.", citedClauseId: null, verbatimQuote: null });
+  return asks.map((ask) => RawExtractionAskSchema.parse(ask));
 }
 
 export class MockProvider implements AnalysisProvider {
-  async analyze(message: string, contractText: string): Promise<ModelAnalysis> {
+  async analyze(message: string, contractText: string): Promise<RawExtractionAsk[]> {
     void contractText;
     return mockAnalysis(message);
+  }
+  async draft(verifiedAsks: unknown[], tone: "firm" | "neutral" | "collaborative"): Promise<DraftResponse> {
+    return DraftResponseSchema.parse({ tone, emailBody: verifiedAsks.some((ask) => (ask as { verdict: string }).verdict === "OUT_OF_SCOPE") ? "Thanks for the request. This appears to be outside the signed scope; I can prepare a separate estimate if helpful." : "Thanks for the request. This is covered by the signed scope and will be included in the next delivery.", referencedClauses: [] });
   }
 }
 
@@ -29,19 +33,34 @@ export class OpenAICompatibleProvider implements AnalysisProvider {
     this.model = model;
   }
   private model: string;
-  async analyze(message: string, contractText: string): Promise<ModelAnalysis> {
+  async analyze(message: string, contractText: string): Promise<RawExtractionAsk[]> {
     const response = await this.client.chat.completions.create({
       model: this.model,
       temperature: 0,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: "Return only JSON matching { asks: [{ id, summary, deliverable, type, clauseId, verbatimQuote }] }. Never invent quotes; use null when no exact evidence." },
+        { role: "system", content: "Return only JSON matching { asks: [{ id, extractedText, verdict, rationale, citedClauseId, verbatimQuote }] }. Never invent quotes; use null when no exact evidence." },
         { role: "user", content: `Contract:\n${contractText}\n\nClient request:\n${message}` }
       ]
     });
     const content = response.choices[0]?.message.content;
     if (!content) throw new Error("Inference endpoint returned no analysis.");
-    return ModelAnalysisSchema.parse(JSON.parse(content));
+    const parsed = ModelAnalysisSchema.parse(JSON.parse(content));
+    return parsed.asks as unknown as RawExtractionAsk[];
+  }
+  async draft(verifiedAsks: unknown[], tone: "firm" | "neutral" | "collaborative"): Promise<DraftResponse> {
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: "Return only JSON matching { tone, emailBody, referencedClauses }. Draft only from the supplied verified asks; do not add facts." },
+        { role: "user", content: JSON.stringify({ tone, verifiedAsks }) }
+      ]
+    });
+    const content = response.choices[0]?.message.content;
+    if (!content) throw new Error("Inference endpoint returned no draft response.");
+    return DraftResponseSchema.parse(JSON.parse(content));
   }
 }
 

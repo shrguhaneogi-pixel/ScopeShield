@@ -44,7 +44,7 @@ export default function Home() {
             {sampleContracts.map((contract) => <button key={contract.id} onClick={() => setContractId(contract.id)} className={`w-full rounded-xl border p-4 text-left transition ${contractId === contract.id ? "border-[var(--green)] bg-[var(--mint)]" : "border-[var(--line)] bg-white hover:border-[var(--green)]"}`}><p className="font-semibold">{contract.name}</p><p className="mt-1 text-xs text-[var(--muted)]">{contract.clauses.length} canonical clauses</p></button>)}
           </div>
           <p className="mb-3 mt-8 text-xs font-bold uppercase tracking-[.18em] text-[var(--muted)]">Clause navigator</p>
-          <div className="space-y-2">{sampleContracts.find((item) => item.id === contractId)?.clauses.map((clause) => <div key={clause.id} className="rounded-lg border border-[var(--line)] bg-white p-3 text-sm"><span className="mr-2 font-mono text-xs text-[var(--green)]">{clause.id}</span>{clause.heading.replace(/^\d+\.\s*/, "")}</div>)}</div>
+          <div className="space-y-2">{sampleContracts.find((item) => item.id === contractId)?.clauses.map((clause) => <div key={clause.id} className="rounded-lg border border-[var(--line)] bg-white p-3 text-sm"><span className="mr-2 font-mono text-xs text-[var(--green)]">{clause.id}</span>{clause.title.replace(/^\d+\.\s*/, "")}</div>)}</div>
         </aside>
         <section>
           <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--green)]">Request analysis</p><h1 className="serif mt-2 text-4xl font-bold">Is this in scope?</h1><p className="mt-2 max-w-2xl text-[var(--muted)]">AI interprets the request. Deterministic verification checks every citation against your signed contract.</p></div>

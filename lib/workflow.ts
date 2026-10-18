@@ -1,18 +1,25 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { ModelAnalysisSchema } from "./schemas";
+import { DraftResponseSchema, RawExtractionAskSchema, type ContractClause, type DraftResponse } from "./schemas";
 import type { AnalysisProvider } from "./providers";
+import { verifyCitations } from "./verification";
 
 declare global {
   var __scopeShieldProvider: AnalysisProvider | undefined;
 }
 
-const inputSchema = z.object({ message: z.string(), contractText: z.string() });
-const analysisStep = createStep({
-  id: "decompose-client-request",
-  description: "Decompose a client message into typed atomic asks using the configured provider.",
+const inputSchema = z.object({
+  message: z.string(),
+  contractText: z.string(),
+  clauses: z.array(z.object({ id: z.string(), title: z.string(), body: z.string(), category: z.string() })),
+  tone: z.enum(["firm", "neutral", "collaborative"])
+});
+const extractionOutputSchema = z.array(RawExtractionAskSchema);
+const extractionStep = createStep({
+  id: "analyze-client-request",
+  description: "Extract typed atomic asks and provisional evidence from the client message.",
   inputSchema,
-  outputSchema: ModelAnalysisSchema,
+  outputSchema: extractionOutputSchema,
   execute: async ({ inputData }) => {
     const provider = globalThis.__scopeShieldProvider;
     if (!provider) throw new Error("Analysis provider was not configured for the Mastra workflow.");
@@ -20,19 +27,46 @@ const analysisStep = createStep({
   }
 });
 
+const draftInputSchema = z.object({
+  asks: extractionOutputSchema,
+  clauses: inputSchema.shape.clauses,
+  tone: inputSchema.shape.tone
+});
+const workflowOutputSchema = z.object({ verifiedAsks: z.array(z.any()), draft: DraftResponseSchema });
+const draftStep = createStep({
+  id: "draft-verified-response",
+  description: "Verify citations locally and draft only from verified results.",
+  inputSchema: draftInputSchema,
+  outputSchema: workflowOutputSchema,
+  execute: async ({ inputData }) => {
+    const provider = globalThis.__scopeShieldProvider;
+    if (!provider) throw new Error("Analysis provider was not configured for the Mastra workflow.");
+    const verified = verifyCitations(inputData.asks, inputData.clauses as ContractClause[]);
+    return { verifiedAsks: verified, draft: await provider.draft(verified, inputData.tone) };
+  }
+});
+
 export const analysisWorkflow = createWorkflow({
   id: "scope-analysis",
   inputSchema,
-  outputSchema: ModelAnalysisSchema
-}).then(analysisStep).commit();
+  outputSchema: workflowOutputSchema
+})
+  .then(extractionStep)
+  .map(async ({ inputData, getStepResult }) => ({
+    asks: getStepResult(extractionStep),
+    clauses: inputData.clauses,
+    tone: inputData.tone
+  }))
+  .then(draftStep)
+  .commit();
 
-export async function runAnalysisWorkflow(provider: AnalysisProvider, message: string, contractText: string) {
+export async function runAnalysisWorkflow(provider: AnalysisProvider, input: z.input<typeof inputSchema>) {
   globalThis.__scopeShieldProvider = provider;
   try {
     const run = await analysisWorkflow.createRun();
-    const result = await run.start({ inputData: { message, contractText } });
+    const result = await run.start({ inputData: input });
     if (result.status !== "success") throw new Error("Mastra analysis workflow failed.");
-    return ModelAnalysisSchema.parse(result.result);
+    return workflowOutputSchema.parse(result.result);
   } finally {
     delete globalThis.__scopeShieldProvider;
   }

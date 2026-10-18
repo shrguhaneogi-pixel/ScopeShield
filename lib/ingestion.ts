@@ -1,19 +1,29 @@
-import { ClauseSchema, ContractSchema, type Clause, type Contract } from "./schemas";
+import { ContractClauseSchema, ContractSchema, type ContractClause, type Contract } from "./schemas";
 import { extractText } from "unpdf";
 
-export function segmentClauses(text: string): Clause[] {
+function categoryForHeading(heading: string): ContractClause["category"] {
+  const value = heading.toLowerCase();
+  if (/revision|feedback/.test(value)) return "REVISIONS";
+  if (/timeline|schedule|deadline/.test(value)) return "TIMELINE";
+  if (/exclusion|out of scope/.test(value)) return "EXCLUSIONS";
+  if (/payment|fee|invoice/.test(value)) return "PAYMENT";
+  if (/ip|intellectual|ownership|license/.test(value)) return "LEGAL_IP";
+  return "DELIVERABLES";
+}
+
+export function segmentClauses(text: string): ContractClause[] {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const clauses: Clause[] = [];
   let current: { heading: string; body: string[] } | undefined;
   for (const line of lines) {
     const heading = line.match(/^(\d+)[.)]\s+(.+)$/);
     if (heading) {
-      if (current) clauses.push({ id: `clause-${String(clauses.length + 1).padStart(3, "0")}`, heading: current.heading, text: current.body.join(" ") });
+      if (current) clauses.push({ id: `clause-${String(clauses.length + 1).padStart(3, "0")}`, title: current.heading, body: current.body.join(" "), category: categoryForHeading(current.heading) });
       current = { heading: `${heading[1]}. ${heading[2]}`, body: [] };
     } else if (current) current.body.push(line);
   }
-  if (current) clauses.push({ id: `clause-${String(clauses.length + 1).padStart(3, "0")}`, heading: current.heading, text: current.body.join(" ") });
-  return clauses.map((clause) => ClauseSchema.parse(clause));
+  if (current) clauses.push({ id: `clause-${String(clauses.length + 1).padStart(3, "0")}`, title: current.heading, body: current.body.join(" "), category: categoryForHeading(current.heading) });
+  return clauses.map((clause) => ContractClauseSchema.parse(clause));
 }
 
 export function contractFromText(id: string, name: string, text: string): Contract {
