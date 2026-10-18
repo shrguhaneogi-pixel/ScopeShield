@@ -64,5 +64,6 @@ export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 export const AnalyzeRequestSchema = z.object({
   contractId: z.string().min(1),
   message: z.string().min(1).max(10000),
-  tone: ToneSchema.default("neutral")
+  tone: ToneSchema.default("neutral"),
+  revision: z.number().int().positive().default(1)
 });

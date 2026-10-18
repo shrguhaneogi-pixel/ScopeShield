@@ -14,16 +14,17 @@ export default function Home() {
   const [message, setMessage] = useState(examples[0]);
   const [tone, setTone] = useState<Tone>("neutral");
   const [result, setResult] = useState<AnalysisResult>();
+  const [revision, setRevision] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function analyze() {
     setLoading(true); setError("");
     try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contractId, message, tone }) });
+      const response = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ contractId, message, tone, revision }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setResult(data);
+      setResult(data); setRevision((current) => current + 1);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Analysis failed."); }
     finally { setLoading(false); }
   }
