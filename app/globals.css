@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #18212b;
+  --muted: #687481;
+  --line: #e2e6e8;
+  --paper: #fbfcfa;
+  --mint: #dcefe4;
+  --green: #176b4d;
+  --amber: #bd7418;
+  --red: #b7473c;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+button, textarea, select { font: inherit; }
+.serif { font-family: Georgia, "Times New Roman", serif; }
