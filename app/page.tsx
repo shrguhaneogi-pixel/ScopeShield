@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import type { AnalysisResult, Tone } from "@/lib/schemas";
 import { sampleContracts } from "@/lib/contracts";
 
@@ -34,7 +35,7 @@ export default function Home() {
     <main className="min-h-screen">
       <header className="border-b border-[var(--line)] bg-white/70">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--green)] text-lg font-bold text-white">S</div><span className="serif text-2xl font-bold">ScopeShield</span></div>
+          <div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--green)] text-white"><ShieldCheck size={21} /></div><span className="serif text-2xl font-bold">ScopeShield</span></div>
           <div className="text-right"><p className="text-sm font-semibold">Protect your scope.</p><p className="text-xs text-[var(--muted)]">Preserve your client relationships.</p></div>
         </div>
       </header>
